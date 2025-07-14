@@ -12,6 +12,20 @@ app = Flask(__name__)
 image_processor = SegformerImageProcessor.from_pretrained("nvidia/segformer-b5-finetuned-ade-640-640")
 model = SegformerForSemanticSegmentation.from_pretrained("nvidia/segformer-b5-finetuned-ade-640-640")
 
+# ADE20K class indices for wall, floor, and ceiling
+ADE_CLASSES = {
+    "wall": 12,
+    "floor": 13,
+    "ceiling": 95
+}
+
+# Color map for visualization
+COLOR_MAP = {
+    ADE_CLASSES["wall"]: [255, 0, 0],     # Red
+    ADE_CLASSES["floor"]: [0, 255, 0],    # Green
+    ADE_CLASSES["ceiling"]: [0, 0, 255]   # Blue
+}
+
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
@@ -36,27 +50,23 @@ def predict():
         logits = outputs.logits
         predictions = torch.argmax(logits, dim=1).squeeze().numpy()
 
-        # Print unique class indices predicted
+        # Print unique class indices predicted for debugging
         unique_classes = np.unique(predictions)
         print(f"Unique classes predicted: {unique_classes}")  # Debugging line
-
-        # Create a color map for the segmentation
-        color_map = np.array([
-            [0, 0, 0],        # 0: Background (Black)
-            [255, 0, 0],      # 1: Wall (Red)
-            [0, 255, 0],      # 2: Floor (Green)
-            [0, 0, 255],      # 3: Ceiling (Blue)
-        ])
 
         # Create a colorized segmentation map
         segmented_image = np.zeros((predictions.shape[0], predictions.shape[1], 3), dtype=np.uint8)
 
-        for class_index in range(len(color_map)):
-            segmented_image[predictions == class_index] = color_map[class_index]
+        # Assign colors for wall, floor, and ceiling
+        for class_index, color in COLOR_MAP.items():
+            segmented_image[predictions == class_index] = color
 
         # Resize the segmented image to match the original image size
         segmented_image = Image.fromarray(segmented_image)
         segmented_image = segmented_image.resize(original_size, Image.BILINEAR)
+
+        # Convert segmented image to RGB mode explicitly
+        segmented_image = segmented_image.convert("RGB")
 
         # Save the segmented image to a BytesIO object
         img_byte_arr = io.BytesIO()
