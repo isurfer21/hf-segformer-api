@@ -36,12 +36,16 @@ def predict():
         logits = outputs.logits
         predictions = torch.argmax(logits, dim=1).squeeze().numpy()
 
+        # Print unique class indices predicted
+        unique_classes = np.unique(predictions)
+        print(f"Unique classes predicted: {unique_classes}")  # Debugging line
+
         # Create a color map for the segmentation
         color_map = np.array([
-            [0, 0, 0],        # 0: Background
-            [128, 0, 0],      # 1: Wall
-            [0, 128, 0],      # 2: Floor
-            [0, 0, 128],      # 3: Ceiling
+            [0, 0, 0],        # 0: Background (Black)
+            [255, 0, 0],      # 1: Wall (Red)
+            [0, 255, 0],      # 2: Floor (Green)
+            [0, 0, 255],      # 3: Ceiling (Blue)
         ])
 
         # Create a colorized segmentation map

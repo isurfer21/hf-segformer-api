@@ -30,7 +30,7 @@ for i in "${!urls[@]}"; do
     echo "Original image $((i+1)) already exists. Skipping download."
   fi
 
-  # Send image URL to API
+  # Always send image URL to API
   echo "Requesting prediction for image $((i+1))..."
   curl -s -X POST http://localhost:5000/predict \
        -H "Content-Type: application/json" \
