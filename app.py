@@ -34,7 +34,9 @@ def predict():
         image_url = data['image_url']
 
         # Load the image
-        image = Image.open(requests.get(image_url, stream=True).raw).convert("RGB")
+        response = requests.get(image_url, stream=True)
+        response.raise_for_status()
+        image = Image.open(response.raw).convert("RGB")
 
         # Store the original image size
         original_size = image.size
@@ -57,23 +59,31 @@ def predict():
         # Create a colorized segmentation map
         segmented_image = np.zeros((predictions.shape[0], predictions.shape[1], 3), dtype=np.uint8)
 
-        # Assign colors for wall, floor, and ceiling
-        for class_index, color in COLOR_MAP.items():
-            segmented_image[predictions == class_index] = color
+        # Check if any target classes are present
+        target_classes_found = any(cls in unique_classes for cls in COLOR_MAP.keys())
 
-        # Resize the segmented image to match the original image size
-        segmented_image = Image.fromarray(segmented_image)
+        if target_classes_found:
+            # Assign colors for wall, floor, and ceiling
+            for class_index, color in COLOR_MAP.items():
+                segmented_image[predictions == class_index] = color
+        else:
+            # Fallback: visualize all detected classes with random colors
+            print("Target classes not found. Visualizing all detected classes.")
+            np.random.seed(42)
+            for cls in unique_classes:
+                color = np.random.randint(0, 255, size=3)
+                segmented_image[predictions == cls] = color
+
+        # Convert to PIL image and resize
+        segmented_image = Image.fromarray(segmented_image, mode="RGB")
         segmented_image = segmented_image.resize(original_size, Image.BILINEAR)
 
-        # Convert segmented image to RGB mode explicitly
-        segmented_image = segmented_image.convert("RGB")
-
-        # Save the segmented image to a BytesIO object
+        # Save to BytesIO
         img_byte_arr = io.BytesIO()
         segmented_image.save(img_byte_arr, format='PNG')
         img_byte_arr.seek(0)
 
-        # Return the image as a response
+        # Return the image
         return send_file(img_byte_arr, mimetype='image/png')
 
     except Exception as e:
